@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu
+  xmlns:android="http://schemas.android.com/apk/res/android">
+<item android:id="@+id/keyboard_volume_up"
+android:title="@string/volumeadd"
+/> 
+<item android:id="@+id/keyboard_volume_down"
+android:title="@string/volumesub"
+/>
+ <item android:id="@+id/keyboard_help"
+android:title="@string/helpin"
+ />
+  <item android:id="@+id/re_back"
+android:title="@string/reback"
+ />
+  <item android:id="@+id/exit"
+android:title="@string/exit"
+ /> 
+ 
+
+</menu>
