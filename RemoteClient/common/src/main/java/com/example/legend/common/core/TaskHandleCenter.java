@@ -2,8 +2,9 @@ package com.example.legend.common.core;
 
 import com.example.legend.common.Constants;
 import com.example.legend.common.ReceiveCallback;
-import com.example.legend.common.packet.Packet;
+import com.example.legend.common.packet.AbstractPacket;
 import com.example.legend.common.task.MsgSendTask;
+import com.example.legend.common.task.BaseMultiThreadDownloadTask;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -13,6 +14,8 @@ import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -35,7 +38,8 @@ public class TaskHandleCenter {
 
     private ExecutorService service;
     private DatagramSocket datagramSocket;
-    private ReceiveCallback<Packet> receiveCallback;
+    private ReceiveCallback<AbstractPacket> receiveCallback;
+    private Map<String, BaseMultiThreadDownloadTask> map = new HashMap<>();
     private Socket socket;
 
     private TaskHandleCenter() {
@@ -50,7 +54,7 @@ public class TaskHandleCenter {
         }
     }
 
-    public void setReceiveCallback(ReceiveCallback<Packet> receiveCallback) {
+    public void setReceiveCallback(ReceiveCallback<AbstractPacket> receiveCallback) {
         this.receiveCallback = receiveCallback;
     }
 
@@ -71,7 +75,7 @@ public class TaskHandleCenter {
         service.execute(runnable);
     }
 
-    public void sendPacket(Packet packet) {
+    public void sendPacket(AbstractPacket packet) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ObjectOutputStream oos = new ObjectOutputStream(baos);
@@ -82,6 +86,14 @@ public class TaskHandleCenter {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public BaseMultiThreadDownloadTask getDownloadTask(String name) {
+        return map.get(name);
+    }
+
+    public void saveDownloadTask(String name, BaseMultiThreadDownloadTask task) {
+        map.put(name, task);
     }
 
     class MsgReceiveThread extends Thread {
@@ -100,8 +112,9 @@ public class TaskHandleCenter {
                 try {
                     DatagramPacket datagramPacket = new DatagramPacket(data, data.length);
                     ds.receive(datagramPacket);
+                    System.out.println("address" + datagramPacket.getSocketAddress());
                     inputStream = new ObjectInputStream(new ByteArrayInputStream(data));
-                    Packet packet = (Packet) inputStream.readObject();
+                    AbstractPacket packet = (AbstractPacket) inputStream.readObject();
 
                     if (receiveCallback != null) {
                         receiveCallback.receiveMessage(packet);
@@ -138,6 +151,9 @@ public class TaskHandleCenter {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+        if (map.size() > 0) {
+            map.clear();
         }
     }
 }

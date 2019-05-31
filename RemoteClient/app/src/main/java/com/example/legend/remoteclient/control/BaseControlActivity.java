@@ -8,18 +8,21 @@ import android.widget.Toast;
 
 import com.example.legend.common.Constants;
 import com.example.legend.common.ReceiveCallback;
+import com.example.legend.common.core.DownloadScheduler;
 import com.example.legend.common.core.TaskHandleCenter;
+import com.example.legend.common.packet.AbstractPacket;
 import com.example.legend.common.packet.FileDownloadRequestPacket;
 import com.example.legend.common.packet.FileDownloadResponsePacket;
 import com.example.legend.common.packet.FileListRequestPacket;
 import com.example.legend.common.packet.FileListResponsePacket;
-import com.example.legend.common.packet.FileUploadResponsePacket;
-import com.example.legend.common.packet.Packet;
+import com.example.legend.common.packet.FileRequestPacket;
+import com.example.legend.common.packet.FileResponsePacket;
 import com.example.legend.common.packet.StringRequestPacket;
 import com.example.legend.common.task.GetLocalFiles;
 import com.example.legend.common.task.GetLocalFilesTask;
 import com.example.legend.common.task.MakeConnection;
 import com.example.legend.remoteclient.R;
+import com.example.legend.remoteclient.core.FileApi;
 import com.example.legend.remoteclient.core.FileSendTask;
 
 import java.io.File;
@@ -29,18 +32,20 @@ import static com.example.legend.common.Constants.FILE_DOWNLOAD_REQUEST;
 import static com.example.legend.common.Constants.FILE_DOWNLOAD_RESPONSE;
 import static com.example.legend.common.Constants.FILE_LIST_REQUEST;
 import static com.example.legend.common.Constants.FILE_LIST_RESPONSE;
-import static com.example.legend.common.Constants.FILE_UPLOAD_RESPONSE;
+import static com.example.legend.common.Constants.FILE_REQUEST;
+import static com.example.legend.common.Constants.FILE_RESPONSE;
 
 /**
  * @author Legend
  * @data by on 19-4-13.
  * @description
  */
-public abstract class BaseControlActivity extends AppCompatActivity implements ReceiveCallback<Packet> {
+public abstract class BaseControlActivity extends AppCompatActivity implements ReceiveCallback<AbstractPacket> {
 
     Key volumeUpKey = new VolumeUpKey();
     Key volumeDownKey = new VolumeDownKey();
     protected TaskHandleCenter handleCenter = TaskHandleCenter.getInstance();
+    private DownloadScheduler scheduler = new DownloadScheduler();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -68,7 +73,7 @@ public abstract class BaseControlActivity extends AppCompatActivity implements R
         this.sendMessage(new StringRequestPacket(str));
     }
 
-    public void sendMessage(Packet packet) {
+    public void sendMessage(AbstractPacket packet) {
         if (packet.identifier == Constants.REMOTE) {
             handleCenter.sendPacket(packet);
         } else {
@@ -77,28 +82,38 @@ public abstract class BaseControlActivity extends AppCompatActivity implements R
     }
 
     @Override
-    public void receiveMessage(Packet packet) {
-        runOnUiThread(() -> {
-            String type = packet.type();
-            switch (type) {
-                case FILE_LIST_REQUEST:
-                    dealFileListRequest((FileListRequestPacket) packet);
-                    break;
-                case FILE_LIST_RESPONSE:
-                    receiveFileList((FileListResponsePacket) packet);
-                    break;
-                case FILE_DOWNLOAD_REQUEST:
-                    dealFileDownloadRequest((FileDownloadRequestPacket) packet);
-                    break;
-                case FILE_UPLOAD_RESPONSE:
-                    dealFileUploadResponse((FileUploadResponsePacket) packet);
-                    break;
-                case FILE_DOWNLOAD_RESPONSE:
-                    receiveFile((FileDownloadResponsePacket) packet);
-                    break;
-                default: break;
-            }
-        });
+    public void receiveMessage(AbstractPacket packet) {
+        String type = packet.type();
+        switch (type) {
+            case FILE_LIST_REQUEST:
+                dealFileListRequest((FileListRequestPacket) packet);
+                break;
+            case FILE_LIST_RESPONSE:
+                receiveFileList((FileListResponsePacket) packet);
+                break;
+            case FILE_DOWNLOAD_REQUEST:
+                dealFileDownloadRequest((FileDownloadRequestPacket) packet);
+                break;
+            case FILE_DOWNLOAD_RESPONSE:
+                receiveFile((FileDownloadResponsePacket) packet);
+                break;
+            case FILE_REQUEST:
+                dealFileRequest((FileRequestPacket) packet);
+                break;
+            case FILE_RESPONSE:
+                receiveFileResponse((FileResponsePacket) packet);
+                break;
+            default: break;
+        }
+    }
+
+    protected void dealFileRequest(FileRequestPacket packet) {
+        // 响应文件请求 客户端收到该响应后才可以开始请求下载
+        File file = new File(packet.data());
+        FileResponsePacket fileResponsePacket =
+                new FileResponsePacket(packet.data(), file.length());
+        fileResponsePacket.setAttach(file.getName());
+        handleCenter.sendPacket(fileResponsePacket);
     }
 
     public void dealFileListRequest(FileListRequestPacket packet) {
@@ -106,36 +121,32 @@ public abstract class BaseControlActivity extends AppCompatActivity implements R
     }
 
     public void dealFileDownloadRequest(FileDownloadRequestPacket packet) {
-        File file = new File(packet.data());
-        if (file.length() == 0) {
-            return;
-        }
-        sendMessage(new FileUploadResponsePacket(file.getName(), file.length()));
-        try {
-            String[] params = new String[]{packet.data(), packet.length+""};
-            new FileSendTask(this, false).execute(params);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+        FileDownloadRequestPacket fdPacket = packet;
+        File file = new File(fdPacket.data());
+        // 构造响应包
+        FileDownloadResponsePacket responsePacket =
+                new FileDownloadResponsePacket(file.getName(), fdPacket.offset, fdPacket.length);
+        responsePacket.seq = fdPacket.seq;
+        handleCenter.sendPacket(responsePacket);
 
-    public void dealFileUploadResponse(FileUploadResponsePacket packet) {
         new MakeConnection(socket -> {
-            handleCenter.setSocket(socket);
-            runOnUiThread(() -> {
-                try {
-                    String[] params = new String[]{packet.data(), packet.length+""};
-                    new FileSendTask(this).execute(params);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
+            try {
+                new FileSendTask(packet, socket, this).start();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         });
     }
 
+
     public void receiveFileList(FileListResponsePacket packet) {}
 
-    public void receiveFile(FileDownloadResponsePacket packet) {}
+    public void receiveFileResponse(FileResponsePacket packet) {}
+
+    public void receiveFile(FileDownloadResponsePacket packet) {
+        packet.setAttach(FileApi.getExternalStoragePath() + "/RemoteControl/");
+        scheduler.doTask(packet);
+    }
 
     protected void volumeSetting(Key key) {
         final String[] items = {"鼠标左键","鼠标右键", "Ctrl键", "Z键","空格键","Up键"};

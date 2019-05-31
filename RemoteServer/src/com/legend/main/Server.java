@@ -4,15 +4,14 @@ package com.legend.main;
 import com.example.legend.common.Constants;
 import com.example.legend.common.ReceiveCallback;
 import com.example.legend.common.Utils;
+import com.example.legend.common.core.DownloadScheduler;
 import com.example.legend.common.core.TaskHandleCenter;
 import com.example.legend.common.packet.*;
+import com.example.legend.common.task.BaseFileSendTask;
 import com.example.legend.common.task.GetLocalFiles;
-import com.example.legend.common.task.GetLocalFilesTask;
-import com.legend.main.core.DealStringMsgTask;
-import com.legend.main.core.FileApi;
-import com.legend.main.core.FileDownloadTask;
-import com.legend.main.core.FileSendTask;
+import com.legend.main.core.*;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -24,11 +23,12 @@ import static com.example.legend.common.Constants.*;
  * @data by on 19-5-18.
  * @description
  */
-public class Server implements ReceiveCallback<Packet> {
+public class Server implements ReceiveCallback<AbstractPacket> {
 
     TaskHandleCenter handleCenter = TaskHandleCenter.getInstance();
     private ServerSocket serverSocket;
     private DealStringMsgTask dealStringMsgTask = new DealStringMsgTask();
+    private DownloadScheduler scheduler = new DownloadScheduler();
 
     public Server() {
         try {
@@ -42,7 +42,7 @@ public class Server implements ReceiveCallback<Packet> {
     }
 
     @Override
-    public void receiveMessage(Packet packet) {
+    public void receiveMessage(AbstractPacket packet) {
         System.out.println(packet + " : " + packet.data());
         String type = packet.type();
         switch (type) {
@@ -57,13 +57,45 @@ public class Server implements ReceiveCallback<Packet> {
                 });
                 break;
             case FILE_DOWNLOAD_REQUEST:
-                new FileSendTask((FileDownloadRequestPacket) packet, serverSocket).start();
+                try {
+                    FileDownloadRequestPacket fdPacket = (FileDownloadRequestPacket) packet;
+                    File file = new File(fdPacket.data());
+                    // 构造响应包
+                    FileDownloadResponsePacket responsePacket =
+                            new FileDownloadResponsePacket(file.getName(), fdPacket.offset, fdPacket.length);
+                    responsePacket.seq = fdPacket.seq;
+                    handleCenter.sendPacket(responsePacket);
+
+                    Socket socket = serverSocket.accept();
+                    new BaseFileSendTask((FileDownloadRequestPacket) packet, socket).start();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 break;
-            case FILE_UPLOAD_REQUEST:
-                new FileDownloadTask((FileUploadRequestPacket) packet, serverSocket).start();
+            case FILE_DOWNLOAD_RESPONSE:
+                try {
+                    Socket socket = serverSocket.accept();
+                    packet.setAttach(FileApi.getHomeDirectoryPath() + "/RemoteControl/");
+                    scheduler.doTask((FileDownloadResponsePacket) packet, socket);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 break;
             case STRING_MSG_REQUEST:
                 dealStringMsgTask.run((StringRequestPacket) packet);
+                break;
+            case FILE_REQUEST:
+                // 响应文件请求 客户端收到该响应后才可以开始请求下载
+                FileRequestPacket fileRequestPacket = (FileRequestPacket) packet;
+                File file = new File(fileRequestPacket.data());
+                FileResponsePacket fileResponsePacket = new FileResponsePacket(fileRequestPacket.data(),
+                        file.length());
+                fileResponsePacket.setAttach(file.getName());
+                handleCenter.sendPacket(fileResponsePacket);
+                break;
+            case FILE_RESPONSE:
+                new MultiThreadDownloadFileTask(FileApi.getHomeDirectoryPath() +"/RemoteControl/" ,
+                        (FileResponsePacket) packet).start();
                 break;
             default: break;
         }
@@ -79,7 +111,8 @@ public class Server implements ReceiveCallback<Packet> {
         public void run() {
             try {
                 Socket socket = serverSocket.accept();
-                socket.setKeepAlive(false);
+                socket.getOutputStream().write(-1);
+                socket.close();
                 Constants.TARGET_IP = String.valueOf(socket.getInetAddress()).substring(1);
                 System.out.println(socket.getInetAddress());
             } catch (IOException e) {
@@ -87,7 +120,6 @@ public class Server implements ReceiveCallback<Packet> {
             }
         }
     }
-
 
     public static void main(String[] args) {
         System.out.println(Utils.getLocalAddress());

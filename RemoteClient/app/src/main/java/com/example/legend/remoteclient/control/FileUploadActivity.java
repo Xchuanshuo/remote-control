@@ -10,7 +10,7 @@ import com.example.legend.common.AvatarFile;
 import com.example.legend.common.Constants;
 import com.example.legend.common.packet.FileListRequestPacket;
 import com.example.legend.common.packet.FileListResponsePacket;
-import com.example.legend.common.packet.FileUploadRequestPacket;
+import com.example.legend.common.packet.FileResponsePacket;
 import com.example.legend.remoteclient.R;
 import com.example.legend.remoteclient.control.adapter.FileListAdapter;
 import com.example.legend.remoteclient.core.FileApi;
@@ -55,10 +55,10 @@ public class FileUploadActivity extends BaseControlActivity {
                 sendMessage(new FileListRequestPacket(avatarFile.getPath(), Constants.LOCAL));
             } else {
                 File file = new File(avatarFile.getPath());
-                FileUploadRequestPacket requestPacket =
-                        new FileUploadRequestPacket(avatarFile.getPath(), file.length());
-                requestPacket.setAttach(file.getName());
-                sendMessage(requestPacket);
+                FileResponsePacket fileResponsePacket =
+                        new FileResponsePacket(avatarFile.getPath(), file.length());
+                fileResponsePacket.setAttach(file.getName());
+                sendMessage(fileResponsePacket);
             }
         });
         mBackBtn.setOnClickListener(v -> {

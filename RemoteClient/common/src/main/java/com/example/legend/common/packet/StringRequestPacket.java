@@ -7,7 +7,7 @@ import com.example.legend.common.Constants;
  * @data by on 19-5-18.
  * @description
  */
-public class StringRequestPacket extends Packet<String> {
+public class StringRequestPacket extends AbstractPacket<String> {
 
     public StringRequestPacket(String data) {
         super(data);

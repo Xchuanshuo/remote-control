@@ -14,6 +14,7 @@ import java.net.Socket;
 public class MakeConnectionTask implements Runnable {
 
     private ReceiveCallback<Socket> receiveCallback;
+
     public MakeConnectionTask(ReceiveCallback<Socket> receiveCallback) {
         this.receiveCallback = receiveCallback;
     }

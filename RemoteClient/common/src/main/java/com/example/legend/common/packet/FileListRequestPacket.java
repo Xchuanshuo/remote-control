@@ -8,7 +8,7 @@ import com.example.legend.common.Constants;
  * @data by on 19-5-12.
  * @description
  */
-public class FileListRequestPacket extends Packet<String> {
+public class FileListRequestPacket extends AbstractPacket<String> {
 
     public FileListRequestPacket(String path) {
         super(path);

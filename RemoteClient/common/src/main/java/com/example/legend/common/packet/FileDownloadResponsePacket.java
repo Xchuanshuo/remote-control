@@ -7,11 +7,10 @@ import com.example.legend.common.Constants;
  * @data by on 19-5-12.
  * @description
  */
-public class FileDownloadResponsePacket extends Packet<String>{
+public class FileDownloadResponsePacket extends AbstractPacket<String> {
 
-    public FileDownloadResponsePacket(String name, long length) {
-        super(name);
-        this.length = length;
+    public FileDownloadResponsePacket(String name, long offset, long length) {
+        super(name, offset, length);
     }
 
     @Override

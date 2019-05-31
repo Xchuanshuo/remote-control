@@ -8,10 +8,10 @@ import com.example.legend.common.Constants;
  * @data by on 19-5-12.
  * @description
  */
-public class FileDownloadRequestPacket extends Packet<String> {
+public class FileDownloadRequestPacket extends AbstractPacket<String> {
 
-    public FileDownloadRequestPacket(String path) {
-        super(path);
+    public FileDownloadRequestPacket(String path, long offset, long length) {
+        super(path, offset, length);
     }
 
     @Override

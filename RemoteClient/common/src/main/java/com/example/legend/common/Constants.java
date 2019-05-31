@@ -30,6 +30,8 @@ public class Constants {
     public static final String FILE_DOWNLOAD_RESPONSE = "file_download_response";
     public static final String FILE_UPLOAD_REQUEST = "file_upload_request";
     public static final String FILE_UPLOAD_RESPONSE = "file_upload_response";
+    public static final String FILE_REQUEST = "file_request";
+    public static final String FILE_RESPONSE = "file_response";
     public static final String STRING_MSG_REQUEST = "string_msg_request";
 
     public static final Integer LOCAL = 0;
@@ -40,4 +42,6 @@ public class Constants {
     public static final String PDF = "pdf";
     public static final String FILE = "file";
     public static final String FOLDER = "folder";
+
+    public static final String OK = "OK";
 }

@@ -1,10 +1,14 @@
-package com.legend.main.core;
+package com.example.legend.common.task;
 
+import com.example.legend.common.Constants;
 import com.example.legend.common.core.TaskHandleCenter;
 import com.example.legend.common.packet.FileDownloadRequestPacket;
-import com.example.legend.common.packet.FileDownloadResponsePacket;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.net.Socket;
 
 /**
@@ -12,7 +16,8 @@ import java.net.Socket;
  * @data by on 19-5-18.
  * @description
  */
-public class FileSendTask extends Thread {
+public class BaseFileSendTask extends
+        Thread implements StateCallback {
 
     TaskHandleCenter handleCenter = TaskHandleCenter.getInstance();
     private Socket socket;
@@ -20,7 +25,7 @@ public class FileSendTask extends Thread {
     private long startPos, length;
     private int seq;
 
-    public FileSendTask(FileDownloadRequestPacket packet, Socket socket) {
+    public BaseFileSendTask(FileDownloadRequestPacket packet, Socket socket) {
         this.path = packet.data();
         this.seq = packet.seq;
         this.startPos = packet.offset;
@@ -31,6 +36,7 @@ public class FileSendTask extends Thread {
 
     @Override
     public void run() {
+        preExecute();
         try {
             OutputStream outputStream = socket.getOutputStream();
             // 方便客户端进行绑定
@@ -43,7 +49,7 @@ public class FileSendTask extends Thread {
             }
             String msg = new String(buffer, 0, len);
             System.out.println("client state: " + msg);
-            if (!"OK".equals(msg)) {
+            if (!Constants.OK.equals(msg)) {
                 return;
             }
 
@@ -63,6 +69,23 @@ public class FileSendTask extends Thread {
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            postExecute();
         }
+    }
+
+    @Override
+    public void preExecute() {
+
+    }
+
+    @Override
+    public void updateProgress(int value) {
+
+    }
+
+    @Override
+    public void postExecute() {
+
     }
 }

@@ -11,7 +11,7 @@ import java.util.List;
  * @data by on 19-5-12.
  * @description
  */
-public class FileListResponsePacket extends Packet<List<AvatarFile>> {
+public class FileListResponsePacket extends AbstractPacket<List<AvatarFile>> {
 
     public FileListResponsePacket(List<AvatarFile> data) {
         super(data);

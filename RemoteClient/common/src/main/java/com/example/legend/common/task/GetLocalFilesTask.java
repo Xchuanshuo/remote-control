@@ -57,7 +57,7 @@ public class GetLocalFilesTask implements Runnable {
             } else {
                 itemOrSize = Utils.getSize(f.length());
                 if (heading.endsWith("jpg") || heading.endsWith("jpeg")
-                        || heading.endsWith("png") || heading.endsWith("png")) {
+                        || heading.endsWith("png") || heading.endsWith("webp")) {
                     type = Constants.IMAGE;
                 } else if (heading.endsWith(Constants.MP3)){
                     type = Constants.MP3;
