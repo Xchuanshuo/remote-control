@@ -99,7 +99,7 @@ public class BaseMultiThreadDownloadTask extends Thread
 
                 raf.seek(8 * (i + 1000) + 16);
                 endPos[i] = raf.readLong();
-                totalWritten += endPos[i] - startPos[i];
+                totalWritten += startPos[i] - (i*fileSliceLength);
             }
             System.out.println("totalWritten: " + totalWritten + " fileLength: " + fileLength);
         } else {
