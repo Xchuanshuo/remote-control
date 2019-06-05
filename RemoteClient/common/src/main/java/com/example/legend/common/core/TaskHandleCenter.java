@@ -145,15 +145,10 @@ public class TaskHandleCenter {
         if (datagramSocket != null) {
             datagramSocket.close();
         }
-        if (socket != null) {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        closeSocket();
         if (map.size() > 0) {
             map.clear();
         }
+        Binder.getInstance().clear();
     }
 }
